@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"log"
 	"net/http"
+	"time"
 )
 
 var (
@@ -51,10 +52,19 @@ func submitURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 检查url是否合法是一个可以访问的url
-	// 这里可以使用正则表达式进行检查
-	response, err := http.Get(url)
+	c := &http.Client{
+		Timeout: 3 * time.Second,
+	}
+	response, err := c.Get(url)
 	if err != nil {
+		// 优先判断是否超时无法访问
+		if err, ok := err.(interface{ Timeout() bool }); ok && err.Timeout() {
+			w.WriteHeader(http.StatusBadRequest)
+			response := &ErrorResponse{Msg: "服务器请求超时，意思是服务器也无法访问"}
+			_, _ = w.Write([]byte(response.Error()))
+			log.Println("Request timeout")
+			return
+		}
 		w.WriteHeader(http.StatusBadRequest)
 		response := &ErrorResponse{Msg: "给定地址无法访问"}
 		_, _ = w.Write([]byte(response.Error()))
@@ -102,7 +112,20 @@ func directDownload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Printf("Direct download for URL: %s", url)
-	response, err := http.Get(string(url))
+	req, err := http.NewRequest(http.MethodGet, string(url), nil)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		response := &ErrorResponse{Msg: "非法请求"}
+		_, _ = w.Write([]byte(response.Error()))
+		log.Printf("Failed to create request: %v", err)
+		return
+	}
+
+	for i, i2 := range r.Header {
+		req.Header.Set(i, i2[0])
+	}
+
+	response, err := (&http.Client{}).Do(req)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		response := &ErrorResponse{Msg: "给定地址无法访问"}

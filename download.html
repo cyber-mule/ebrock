@@ -217,7 +217,7 @@
         <p>请勿提交含有违法内容的 URL</p>
         <form id="urlForm">
             <input type="text" id="urlInput" placeholder="输入 URL" required>
-            <button type="submit">提交</button>
+            <button type="submit" id="submitButton">提交</button>
         </form>
         <div id="resultContainer" style="display: none;"></div>
         <button id="copyButton" style="display: none;">复制链接</button>
@@ -266,14 +266,23 @@
         }
     }
 
-    document.getElementById('urlForm').addEventListener('submit', function(e) {
+    document.getElementById('urlForm').addEventListener('submit', async function (e) {
         e.preventDefault();
         var url = document.getElementById('urlInput').value;
+        var submitButton = document.getElementById('submitButton');
+        submitButton.disabled = true; // 禁用按钮
+        submitButton.style.backgroundColor = '#ccc'; // 设置禁用样式
+        submitButton.style.cursor = 'not-allowed'; // 设置禁用样式
+
         if (isValidUrl(url)) {
-            submitUrl(url);
+            await submitUrl(url);
         } else {
             showModal('请输入有效的 URL');
         }
+
+        submitButton.disabled = false; // 启用按钮
+        submitButton.style.backgroundColor = ''; // 恢复原样式
+        submitButton.style.cursor = ''; // 恢复原样式
     });
 
     function isValidUrl(url) {
